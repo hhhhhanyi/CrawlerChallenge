@@ -1,0 +1,76 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: block-chain-crawler
+  labels:
+    app: block-chain-crawler
+  namespace: data
+spec:
+  # suspend: true
+  schedule: "2 1/2 * * *"   # every 2 hours
+  # 
+  # +---------------- minute (0 - 59)
+  # |  +------------- hour (0 - 23)
+  # |  |  +---------- day of month (1 - 31)
+  # |  |  |  +------- month (1 - 12)
+  # |  |  |  |  +---- day of week (0 - 6) (Sunday=0 or 7)
+  # |  |  |  |  |
+  # *  *  *  *  *  command to be executed
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        metadata:
+          name: block-chain-crawler
+          labels:
+            app: block-chain-crawler
+        spec:
+          containers:
+          - name: block-chain-crawler
+            image: gcr.io/alfred-recruitment-test/crawler:v1.0
+            command: ["/bin/sh","-c"]
+            args:
+            - node index.js;
+            env:
+            - name: PROJECT_ID
+              value: "alfred-recruitment-test"
+            - name: GOOGLE_APPLICATION_CREDENTIALS
+              value: "/secret/crawler-app-credential"
+            - name: MY_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MY_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: MY_POD_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            imagePullPolicy: IfNotPresent   #Always
+            resources:
+              requests:
+                cpu: 400m
+                memory: 500Mi
+              limits:
+                cpu: 1000m
+                memory: 1000Mi
+            volumeMounts:
+            - mountPath: /secret
+              name: crawler-app-credential
+              readOnly: true
+          restartPolicy: Never #OnFailure
+          volumes:
+            - name: crawler-app-credential
+              secret:
+                defaultMode: 420
+                secretName: crawler-app-credential
