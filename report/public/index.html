@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='utf-8'>
+    <title>Block Transactions</title>
+    <script src='echarts.min.js'></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+    <div class="row mb-3">
+        <label class="col-sm-2 col-form-label">請選擇 Chain Height：</label>
+        <div class="col-sm-2">
+            <select class="form-select" id="height" onchange="heightChange(event)"></select>
+        </div>
+    </div>
+
+    <div id='linechart'></div>
+
+
+    <script type='text/javascript'>
+        // generate select option
+        const heightSelectElement = document.getElementById('height')
+        const allOption = document.createElement('option')
+        allOption.value = 'All'
+        allOption.text = 'All'
+        allOption.setAttribute('height', 'All')
+        heightSelectElement.appendChild(allOption)
+
+        fetch('/heightList', {
+            cache: 'no-cache',
+            credentials: 'same-origin',
+            method: 'GET'
+        })
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(element => {
+                    const heightOption = document.createElement('option')
+                    heightOption.value = element
+                    heightOption.text = element
+                    heightOption.setAttribute('height', element)
+                    heightSelectElement.appendChild(heightOption)
+                })
+            })
+
+        // generate chart
+        const heightChange = (event) => {
+            genChart(event.target.value)
+        }
+
+        const genChart = (height) => {
+            fetch('/chart', {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ height }),
+                cache: 'no-cache',
+                credentials: 'same-origin',
+                method: 'POST'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    const chart = echarts.init(document.getElementById('linechart'))
+                    const option = {
+                        legend: {
+                            data: ['Average Fee'],
+                            y: 'bottom'
+                        },
+                        tooltip: {},
+                        xAxis: {
+                            name: 'Time (UTC)',
+                            type: 'category',
+                            data: Object.keys(data)
+                        },
+                        yAxis: {
+                            type: 'value',
+                            axisLabel: {
+                                formatter: '{value} BTC'
+                            }
+                        },
+                        series: [{
+                            name: 'Average Fee',
+                            data: Object.values(data),
+                            type: 'line',
+                            smooth: true
+                        }]
+                    }
+                    chart.setOption(option)
+                })
+        }
+
+        // default: All Transactions
+        genChart('All')
+    </script>
+</body>
+
+</html>
