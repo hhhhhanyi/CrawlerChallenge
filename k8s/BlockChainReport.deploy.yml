@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: block-chain-report
+  labels:
+    app: block-chain-report
+  namespace: data
+spec:
+  selector:
+    matchLabels:
+      app: block-chain-report
+  replicas: 1
+  revisionHistoryLimit: 2
+  template:
+    metadata:
+      labels:
+        app: block-chain-report
+    spec:
+      containers:
+      - name: block-chain-report
+        image: gcr.io/alfred-recruitment-test/crawler:v1.5
+        command: ["/bin/sh","-c"]
+        args:
+        - cd report && node index.js
+        env:
+        - name: PROJECT_ID
+          value: "alfred-recruitment-test"
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: "/secret/crawler-app-credential.json"
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: MY_POD_SERVICE_ACCOUNT
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: 200m
+            memory: 200Mi
+          limits:
+            cpu: 500m
+            memory: 1000Mi
+        ports:
+        - containerPort: 3000
+        # livenessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: 3000
+        #   initialDelaySeconds: 10
+        #   periodSeconds: 5
+        #   timeoutSeconds: 20
+        # readinessProbe:
+        #   httpGet:
+        #     path: /health/readiness
+        #     port: 3011
+        #   initialDelaySeconds: 10
+        #   periodSeconds: 5
+        #   timeoutSeconds: 20
+        volumeMounts:
+            - mountPath: /secret
+              name: crawler-app-credential
+              readOnly: true
+      restartPolicy: Always #OnFailure
+      volumes:
+        - name: crawler-app-credential
+          secret:
+            defaultMode: 420
+            secretName: crawler-app-credential
+
